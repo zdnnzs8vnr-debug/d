@@ -1,0 +1,28 @@
+name: build
+on: [workflow_dispatch]
+jobs:
+  deb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make clang dpkg-dev fakeroot libplist-utils xz-utils libssl-dev git
+      - name: setup
+        run: |
+          set -e
+          git clone https://github.com/theos/theos.git $HOME/theos
+          git -C $HOME/theos submodule update --init --recursive
+          curl -L "https://kabiroberai.com/toolchain/download.php?toolchain=ios-linux" -o /tmp/tc.tar.gz
+          tar xzf /tmp/tc.tar.gz -C $HOME/theos/toolchain
+          chmod -R +x $HOME/theos/toolchain/linux/iphone/bin
+          git clone https://github.com/theos/sdks $HOME/theos/sdks
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          ls $HOME/theos/toolchain
+      - name: build
+        run: make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BSVX-deb
+          path: packages/*.deb
